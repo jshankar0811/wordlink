@@ -9,19 +9,28 @@
   <body>
     <main class="app">
       <section class="lobby" id="lobbyView">
-        <div class="brand">
-          <div class="mark" aria-hidden="true">W</div>
-          <div>
-            <h1>Wordlink</h1>
-            <p>Build the chain. Own the last word.</p>
+        <header class="lobby-hero">
+          <div class="brand">
+            <div class="mark" aria-hidden="true">WL</div>
+            <div>
+              <h1>Wordlink</h1>
+              <p>Build the chain. Own the last word.</p>
+            </div>
           </div>
-        </div>
+          <div class="sample-chain" aria-label="Example word chain">
+            <span>side</span>
+            <b>line</b>
+            <span>dance</span>
+            <span>off</span>
+            <span>road</span>
+          </div>
+        </header>
 
         <div class="lobby-grid">
           <form class="panel" id="createForm">
             <div class="panel-head">
               <h2>Create Game</h2>
-              <span class="pill">Host</span>
+              <span class="badge">Host</span>
             </div>
             <label>
               Your name
@@ -38,7 +47,7 @@
             </label>
             <label class="toggle-row">
               <input name="challenges" type="checkbox" checked>
-              Challenges
+              <span>Allow challenges</span>
             </label>
             <button type="submit">Create room</button>
           </form>
@@ -46,7 +55,7 @@
           <form class="panel" id="joinForm">
             <div class="panel-head">
               <h2>Join Game</h2>
-              <span class="pill alt">Guest</span>
+              <span class="badge badge-blue">Guest</span>
             </div>
             <label>
               Your name
@@ -63,61 +72,65 @@
 
       <section class="game hidden" id="gameView">
         <header class="topbar">
-          <div class="brand compact">
-            <div class="mark" aria-hidden="true">W</div>
+          <div class="brand brand-small">
+            <div class="mark" aria-hidden="true">WL</div>
             <div>
               <h1>Wordlink</h1>
               <p id="roomLine">Room -----</p>
             </div>
           </div>
           <div class="room-actions">
-            <button class="icon-button" id="copyCodeButton" type="button" title="Copy room code">⧉</button>
+            <button class="icon-button" id="copyCodeButton" type="button" title="Copy room code">Copy</button>
             <button class="ghost" id="leaveButton" type="button">Leave</button>
           </div>
         </header>
 
-        <div class="status-band" id="statusBand">
-          <div>
-            <span class="label">Prompt</span>
-            <strong id="promptWord">-</strong>
+        <section class="turn-board">
+          <div class="turn-copy">
+            <span class="label">Current word</span>
+            <strong id="promptWord">line</strong>
+            <p id="gameMessage">Waiting for the room.</p>
           </div>
-          <div>
-            <span class="label">Turn</span>
-            <strong id="turnName">-</strong>
-          </div>
-          <div>
+          <div class="timer-card">
             <span class="label">Timer</span>
             <strong id="timer">--</strong>
           </div>
-        </div>
+        </section>
 
         <div class="play-grid">
           <section class="play-area">
             <div class="entry-panel" id="entryPanel">
-              <p id="gameMessage">Waiting for the room.</p>
+              <div class="turn-strip">
+                <span class="label">Turn</span>
+                <strong id="turnName">-</strong>
+              </div>
+
               <form id="playForm" class="play-form">
                 <div class="compound-builder">
-                  <span id="fixedWord">line</span>
-                  <span>+</span>
+                  <span class="word-tile locked" id="fixedWord">line</span>
+                  <span class="plus">+</span>
                   <input name="word" autocomplete="off" placeholder="next word" maxlength="24">
                 </div>
                 <button type="submit">Play link</button>
               </form>
+
+              <p class="error" id="errorText" role="alert"></p>
+              <div class="suggestions" id="suggestions"></div>
+
               <div class="response-row">
                 <button class="ghost" id="challengeButton" type="button">Challenge</button>
                 <button class="ghost" id="rematchButton" type="button">Rematch</button>
               </div>
-              <p class="error" id="errorText" role="alert"></p>
-              <div class="suggestions" id="suggestions"></div>
             </div>
           </section>
 
           <aside class="side-panel">
             <div class="players" id="players"></div>
-            <div>
+            <div class="chain-head">
               <h2>Chain</h2>
-              <ol class="chain" id="chain"></ol>
+              <span class="label">Newest first</span>
             </div>
+            <ol class="chain" id="chain"></ol>
           </aside>
         </div>
       </section>

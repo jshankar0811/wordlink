@@ -92,9 +92,9 @@ leaveButton.addEventListener("click", () => {
 copyCodeButton.addEventListener("click", async () => {
   if (!state.room) return;
   await navigator.clipboard.writeText(state.room.code);
-  copyCodeButton.textContent = "✓";
+  copyCodeButton.textContent = "Done";
   setTimeout(() => {
-    copyCodeButton.textContent = "⧉";
+    copyCodeButton.textContent = "Copy";
   }, 900);
 });
 
@@ -161,7 +161,14 @@ function renderChain(room) {
   chain.innerHTML = "";
   [...room.chain].reverse().forEach((entry) => {
     const item = document.createElement("li");
-    item.innerHTML = `<strong>${escapeHtml(entry.phrase)}</strong><span>${escapeHtml(entry.playerName)}</span>`;
+    item.innerHTML = `
+      <div class="chain-row">
+        <span class="chain-word">${escapeHtml(entry.first)}</span>
+        <span class="chain-arrow">to</span>
+        <span class="chain-word">${escapeHtml(entry.second)}</span>
+      </div>
+      <span class="chain-meta">${escapeHtml(entry.playerName)}</span>
+    `;
     chain.append(item);
   });
 }
