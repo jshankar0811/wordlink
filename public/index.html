@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wordlink</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="lobby" id="lobbyView">
+        <div class="brand">
+          <div class="mark" aria-hidden="true">W</div>
+          <div>
+            <h1>Wordlink</h1>
+            <p>Build the chain. Own the last word.</p>
+          </div>
+        </div>
+
+        <div class="lobby-grid">
+          <form class="panel" id="createForm">
+            <div class="panel-head">
+              <h2>Create Game</h2>
+              <span class="pill">Host</span>
+            </div>
+            <label>
+              Your name
+              <input name="name" maxlength="24" autocomplete="name" placeholder="Player A" required>
+            </label>
+            <label>
+              Turn timer
+              <select name="timerSeconds">
+                <option value="30">30 seconds</option>
+                <option value="45" selected>45 seconds</option>
+                <option value="60">60 seconds</option>
+                <option value="90">90 seconds</option>
+              </select>
+            </label>
+            <label class="toggle-row">
+              <input name="challenges" type="checkbox" checked>
+              Challenges
+            </label>
+            <button type="submit">Create room</button>
+          </form>
+
+          <form class="panel" id="joinForm">
+            <div class="panel-head">
+              <h2>Join Game</h2>
+              <span class="pill alt">Guest</span>
+            </div>
+            <label>
+              Your name
+              <input name="name" maxlength="24" autocomplete="name" placeholder="Player B" required>
+            </label>
+            <label>
+              Room code
+              <input name="code" maxlength="5" class="code-input" placeholder="A7K2Q" required>
+            </label>
+            <button type="submit">Join room</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="game hidden" id="gameView">
+        <header class="topbar">
+          <div class="brand compact">
+            <div class="mark" aria-hidden="true">W</div>
+            <div>
+              <h1>Wordlink</h1>
+              <p id="roomLine">Room -----</p>
+            </div>
+          </div>
+          <div class="room-actions">
+            <button class="icon-button" id="copyCodeButton" type="button" title="Copy room code">⧉</button>
+            <button class="ghost" id="leaveButton" type="button">Leave</button>
+          </div>
+        </header>
+
+        <div class="status-band" id="statusBand">
+          <div>
+            <span class="label">Prompt</span>
+            <strong id="promptWord">-</strong>
+          </div>
+          <div>
+            <span class="label">Turn</span>
+            <strong id="turnName">-</strong>
+          </div>
+          <div>
+            <span class="label">Timer</span>
+            <strong id="timer">--</strong>
+          </div>
+        </div>
+
+        <div class="play-grid">
+          <section class="play-area">
+            <div class="entry-panel" id="entryPanel">
+              <p id="gameMessage">Waiting for the room.</p>
+              <form id="playForm" class="play-form">
+                <div class="compound-builder">
+                  <span id="fixedWord">line</span>
+                  <span>+</span>
+                  <input name="word" autocomplete="off" placeholder="next word" maxlength="24">
+                </div>
+                <button type="submit">Play link</button>
+              </form>
+              <div class="response-row">
+                <button class="ghost" id="challengeButton" type="button">Challenge</button>
+                <button class="ghost" id="rematchButton" type="button">Rematch</button>
+              </div>
+              <p class="error" id="errorText" role="alert"></p>
+              <div class="suggestions" id="suggestions"></div>
+            </div>
+          </section>
+
+          <aside class="side-panel">
+            <div class="players" id="players"></div>
+            <div>
+              <h2>Chain</h2>
+              <ol class="chain" id="chain"></ol>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

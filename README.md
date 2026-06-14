@@ -1,0 +1,20 @@
+# Wordlink
+
+Wordlink is a multiplayer compound-word chain game. Players create a room, join from another browser, and take turns extending the chain with a valid compound.
+
+## Run
+
+```bash
+npm start
+```
+
+Then open `http://localhost:3000`.
+
+## Rules
+
+- The game starts from a random compound word.
+- The next player must use the ending word as the start of a new compound.
+- Example: `side line` gives the prompt `line`; a player can submit `dance` to make `line dance`.
+- Repeating a compound is not allowed.
+- A turn can be challenged by the opponent.
+- The timer can be configured per room.
