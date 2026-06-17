@@ -28,7 +28,7 @@
   ["rain", "coat"], ["coat", "tail"], ["tail", "gate"], ["gate", "keeper"], ["keeper", "score"],
   ["score", "board"], ["board", "room"], ["room", "service"], ["service", "dog"], ["dog", "house"],
   ["dog", "park"], ["park", "way"], ["way", "side"], ["side", "walk"], ["walk", "out"],
-  ["out", "house"], ["house", "plant"], ["plant", "food"], ["food", "court"], ["court", "room"],
+  ["out", "side"], ["out", "house"], ["house", "plant"], ["plant", "food"], ["food", "court"], ["court", "room"],
   ["court", "yard"], ["yard", "work"], ["work", "flow"], ["flow", "chart"], ["chart", "topper"],
   ["star", "fish"], ["fish", "net"], ["net", "work"], ["work", "load"], ["load", "bearing"],
   ["bearing", "wall"], ["wall", "flower"], ["flower", "pot"], ["pot", "luck"], ["luck", "draw"],
