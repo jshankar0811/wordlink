@@ -6,9 +6,11 @@ const crypto = require("crypto");
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "public");
 const compounds = require("./data/compounds.json");
+const joinedWords = require("./data/joined-words.json").map(normalizeWord);
 
 const pairSet = new Set();
 const nextWords = new Map();
+const joinedWordSet = new Set(joinedWords);
 
 for (const [first, second] of compounds) {
   const a = normalizeWord(first);
@@ -16,6 +18,15 @@ for (const [first, second] of compounds) {
   pairSet.add(pairKey(a, b));
   if (!nextWords.has(a)) nextWords.set(a, new Set());
   nextWords.get(a).add(b);
+}
+
+for (const word of joinedWords) {
+  for (let i = 2; i <= word.length - 2; i += 1) {
+    const first = word.slice(0, i);
+    const second = word.slice(i);
+    if (!nextWords.has(first)) nextWords.set(first, new Set());
+    nextWords.get(first).add(second);
+  }
 }
 
 const rooms = new Map();
@@ -181,10 +192,11 @@ function playTurn(body) {
 
   const first = room.currentPrompt;
   const key = pairKey(first, second);
+  const validation = validateLink(first, second);
   if (room.usedPairs.has(key)) return fail(409, `"${formatPair(first, second)}" was already used.`);
-  if (!pairSet.has(key)) {
+  if (!validation.valid) {
     const suggestions = getSuggestions(first);
-    return fail(422, `"${formatPair(first, second)}" is not in the Wordlink bank.`, { suggestions });
+    return fail(422, `"${formatPair(first, second)}" is not in the Wordlink dictionary.`, { suggestions });
   }
 
   const player = room.players[playerIndex];
@@ -195,6 +207,7 @@ function playTurn(body) {
     playerName: player.name,
     challenged: false,
     valid: true,
+    validationType: validation.type,
     at: Date.now()
   };
   room.chain.push(entry);
@@ -202,7 +215,7 @@ function playTurn(body) {
   room.currentPrompt = second;
   room.turnIndex = 1 - room.turnIndex;
   room.deadline = Date.now() + room.settings.timerSeconds * 1000;
-  room.message = `${player.name} played "${formatPair(first, second)}".`;
+  room.message = `${player.name} played "${formatLink(first, second, validation.type)}".`;
   broadcast(room.code);
   return { status: 200, payload: viewRoom(room, body.playerId) };
 }
@@ -222,7 +235,7 @@ function challengeTurn(body) {
   if (last.challenged) return fail(409, "That move has already been challenged.");
 
   last.challenged = true;
-  const lastStillValid = pairSet.has(pairKey(last.first, last.second));
+  const lastStillValid = validateLink(last.first, last.second).valid;
   const challengedPlayer = room.players.find((player) => player.id === last.playerId);
   const challenger = room.players[challengerIndex];
 
@@ -230,7 +243,7 @@ function challengeTurn(body) {
   room.deadline = null;
   room.winnerId = lastStillValid ? challengedPlayer.id : challenger.id;
   room.message = lastStillValid
-    ? `${challenger.name}'s challenge failed. "${formatPair(last.first, last.second)}" is valid.`
+    ? `${challenger.name}'s challenge failed. "${formatLink(last.first, last.second, last.validationType)}" is valid.`
     : `${challenger.name}'s challenge succeeded. "${formatPair(last.first, last.second)}" is invalid.`;
   broadcast(room.code);
   return { status: 200, payload: viewRoom(room, body.playerId) };
@@ -320,6 +333,7 @@ function viewRoom(room, viewerId) {
       first: entry.first,
       second: entry.second,
       phrase: formatPair(entry.first, entry.second),
+      display: formatLink(entry.first, entry.second, entry.validationType),
       playerName: entry.playerName,
       playerId: entry.playerId,
       challenged: entry.challenged,
@@ -379,7 +393,15 @@ function makePlayer(name) {
 function getSuggestions(first, limit = 6) {
   return Array.from(nextWords.get(first) || [])
     .slice(0, limit)
-    .map((second) => formatPair(first, second));
+    .map((second) => formatLink(first, second, validateLink(first, second).type));
+}
+
+function validateLink(first, second) {
+  const a = normalizeWord(first);
+  const b = normalizeWord(second);
+  if (pairSet.has(pairKey(a, b))) return { valid: true, type: "pair" };
+  if (joinedWordSet.has(`${a}${b}`)) return { valid: true, type: "joined" };
+  return { valid: false, type: "missing" };
 }
 
 function normalizeWord(word) {
@@ -392,6 +414,10 @@ function pairKey(first, second) {
 
 function formatPair(first, second) {
   return `${first} ${second}`;
+}
+
+function formatLink(first, second, type) {
+  return type === "joined" ? `${first}${second}` : formatPair(first, second);
 }
 
 function clamp(value, min, max) {
