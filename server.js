@@ -9,12 +9,15 @@ const compounds = require("./data/compounds.json");
 const joinedWords = require("./data/joined-words.json").map(normalizeWord);
 
 const pairSet = new Set();
+const joinedPairSet = new Set();
 const nextWords = new Map();
-const joinedWordSet = new Set(joinedWords);
+const knownSegments = new Set();
 
 for (const [first, second] of compounds) {
   const a = normalizeWord(first);
   const b = normalizeWord(second);
+  knownSegments.add(a);
+  knownSegments.add(b);
   pairSet.add(pairKey(a, b));
   if (!nextWords.has(a)) nextWords.set(a, new Set());
   nextWords.get(a).add(b);
@@ -24,6 +27,8 @@ for (const word of joinedWords) {
   for (let i = 2; i <= word.length - 2; i += 1) {
     const first = word.slice(0, i);
     const second = word.slice(i);
+    if (!knownSegments.has(first)) continue;
+    joinedPairSet.add(pairKey(first, second));
     if (!nextWords.has(first)) nextWords.set(first, new Set());
     nextWords.get(first).add(second);
   }
@@ -114,6 +119,12 @@ async function handleApi(req, res, url) {
     return sendJson(res, result.status, result.payload);
   }
 
+  if (req.method === "POST" && url.pathname === "/api/accept") {
+    const body = await readBody(req);
+    const result = acceptPendingTurn(body);
+    return sendJson(res, result.status, result.payload);
+  }
+
   if (req.method === "POST" && url.pathname === "/api/rematch") {
     const body = await readBody(req);
     const result = rematch(body);
@@ -139,6 +150,7 @@ function createRoom(body) {
     turnIndex: 0,
     startPair: start,
     currentPrompt: start[1],
+    pendingReview: null,
     usedPairs: new Set([pairKey(start[0], start[1])]),
     chain: [
       {
@@ -181,6 +193,7 @@ function playTurn(body) {
   const room = rooms.get(String(body.code || "").trim().toUpperCase());
   if (!room) return fail(404, "Room not found.");
   if (room.status !== "playing") return fail(409, "This room is not currently playing.");
+  if (room.pendingReview) return fail(409, "A link is already waiting for review.");
 
   const playerIndex = room.players.findIndex((player) => player.id === body.playerId);
   if (playerIndex < 0) return fail(403, "You are not in this room.");
@@ -194,12 +207,23 @@ function playTurn(body) {
   const key = pairKey(first, second);
   const validation = validateLink(first, second);
   if (room.usedPairs.has(key)) return fail(409, `"${formatPair(first, second)}" was already used.`);
+  const player = room.players[playerIndex];
   if (!validation.valid) {
-    const suggestions = getSuggestions(first);
-    return fail(422, `"${formatPair(first, second)}" is not in the Wordlink dictionary.`, { suggestions });
+    room.pendingReview = {
+      first,
+      second,
+      playerId: player.id,
+      playerName: player.name,
+      at: Date.now()
+    };
+    room.status = "reviewing";
+    room.turnIndex = 1 - room.turnIndex;
+    room.deadline = null;
+    room.message = `${room.players[room.turnIndex].name} can accept or challenge "${formatPair(first, second)}".`;
+    broadcast(room.code);
+    return { status: 202, payload: viewRoom(room, body.playerId) };
   }
 
-  const player = room.players[playerIndex];
   const entry = {
     first,
     second,
@@ -220,24 +244,73 @@ function playTurn(body) {
   return { status: 200, payload: viewRoom(room, body.playerId) };
 }
 
+function acceptPendingTurn(body) {
+  const room = rooms.get(String(body.code || "").trim().toUpperCase());
+  if (!room) return fail(404, "Room not found.");
+  if (room.status !== "reviewing" || !room.pendingReview) return fail(409, "There is no link waiting for review.");
+
+  const reviewerIndex = room.players.findIndex((player) => player.id === body.playerId);
+  if (reviewerIndex < 0) return fail(403, "You are not in this room.");
+  if (reviewerIndex !== room.turnIndex) return fail(409, "Only the opponent can accept this link.");
+
+  const pending = room.pendingReview;
+  const key = pairKey(pending.first, pending.second);
+  if (room.usedPairs.has(key)) return fail(409, `"${formatPair(pending.first, pending.second)}" was already used.`);
+
+  const entry = {
+    first: pending.first,
+    second: pending.second,
+    playerId: pending.playerId,
+    playerName: pending.playerName,
+    challenged: false,
+    valid: true,
+    validationType: "accepted",
+    at: Date.now()
+  };
+
+  room.chain.push(entry);
+  room.usedPairs.add(key);
+  room.currentPrompt = pending.second;
+  room.status = "playing";
+  room.pendingReview = null;
+  room.deadline = Date.now() + room.settings.timerSeconds * 1000;
+  room.message = `${room.players[reviewerIndex].name} accepted "${formatPair(entry.first, entry.second)}".`;
+  broadcast(room.code);
+  return { status: 200, payload: viewRoom(room, body.playerId) };
+}
+
 function challengeTurn(body) {
   const room = rooms.get(String(body.code || "").trim().toUpperCase());
   if (!room) return fail(404, "Room not found.");
-  if (room.status !== "playing") return fail(409, "This room is not currently playing.");
+  if (room.status !== "playing" && room.status !== "reviewing") return fail(409, "This room is not currently playing.");
   if (!room.settings.challenges) return fail(409, "Challenges are turned off.");
 
   const challengerIndex = room.players.findIndex((player) => player.id === body.playerId);
   if (challengerIndex < 0) return fail(403, "You are not in this room.");
+  const challenger = room.players[challengerIndex];
+
+  if (room.status === "reviewing" && room.pendingReview) {
+    if (challengerIndex !== room.turnIndex) return fail(409, "Only the opponent can challenge this link.");
+    const pending = room.pendingReview;
+    const challengedPlayer = room.players.find((player) => player.id === pending.playerId);
+    room.status = "finished";
+    room.pendingReview = null;
+    room.deadline = null;
+    room.winnerId = challenger.id;
+    room.message = `${challenger.name} challenged "${formatPair(pending.first, pending.second)}". ${challengedPlayer?.name || "The other player"} loses the round.`;
+    broadcast(room.code);
+    return { status: 200, payload: viewRoom(room, body.playerId) };
+  }
 
   const last = room.chain[room.chain.length - 1];
   if (!last || last.playerId === "system") return fail(409, "There is no player move to challenge.");
   if (last.playerId === body.playerId) return fail(409, "You cannot challenge your own move.");
   if (last.challenged) return fail(409, "That move has already been challenged.");
+  if (last.validationType === "accepted") return fail(409, "That link was already accepted by the opponent.");
 
   last.challenged = true;
   const lastStillValid = validateLink(last.first, last.second).valid;
   const challengedPlayer = room.players.find((player) => player.id === last.playerId);
-  const challenger = room.players[challengerIndex];
 
   room.status = "finished";
   room.deadline = null;
@@ -261,6 +334,7 @@ function rematch(body) {
   room.turnIndex = room.players.length === 2 ? Math.floor(Math.random() * 2) : 0;
   room.startPair = start;
   room.currentPrompt = start[1];
+  room.pendingReview = null;
   room.usedPairs = new Set([pairKey(start[0], start[1])]);
   room.chain = [{
     first: start[0],
@@ -329,11 +403,20 @@ function viewRoom(room, viewerId) {
     activePlayerId: active?.id || null,
     activePlayerName: active?.name || null,
     currentPrompt: room.currentPrompt,
+    pendingReview: room.pendingReview ? {
+      first: room.pendingReview.first,
+      second: room.pendingReview.second,
+      phrase: formatPair(room.pendingReview.first, room.pendingReview.second),
+      playerId: room.pendingReview.playerId,
+      playerName: room.pendingReview.playerName,
+      at: room.pendingReview.at
+    } : null,
     chain: room.chain.map((entry) => ({
       first: entry.first,
       second: entry.second,
       phrase: formatPair(entry.first, entry.second),
       display: formatLink(entry.first, entry.second, entry.validationType),
+      validationType: entry.validationType || "pair",
       playerName: entry.playerName,
       playerId: entry.playerId,
       challenged: entry.challenged,
@@ -400,7 +483,7 @@ function validateLink(first, second) {
   const a = normalizeWord(first);
   const b = normalizeWord(second);
   if (pairSet.has(pairKey(a, b))) return { valid: true, type: "pair" };
-  if (joinedWordSet.has(`${a}${b}`)) return { valid: true, type: "joined" };
+  if (joinedPairSet.has(pairKey(a, b))) return { valid: true, type: "joined" };
   return { valid: false, type: "missing" };
 }
 

@@ -394,6 +394,27 @@ h2 {
   font-weight: 850;
 }
 
+.review-panel {
+  display: grid;
+  gap: 10px;
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(201, 180, 88, 0.12);
+}
+
+.review-panel strong {
+  font-size: 28px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .players {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

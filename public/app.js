@@ -11,10 +11,14 @@ const createForm = document.querySelector("#createForm");
 const joinForm = document.querySelector("#joinForm");
 const playForm = document.querySelector("#playForm");
 const challengeButton = document.querySelector("#challengeButton");
+const acceptButton = document.querySelector("#acceptButton");
 const rematchButton = document.querySelector("#rematchButton");
 const leaveButton = document.querySelector("#leaveButton");
 const copyCodeButton = document.querySelector("#copyCodeButton");
 const errorText = document.querySelector("#errorText");
+const reviewPanel = document.querySelector("#reviewPanel");
+const reviewPhrase = document.querySelector("#reviewPhrase");
+const reviewCopy = document.querySelector("#reviewCopy");
 
 createForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -64,6 +68,19 @@ challengeButton.addEventListener("click", async () => {
   clearError();
   try {
     const room = await api("/api/challenge", {
+      code: state.room.code,
+      playerId: state.playerId
+    });
+    render(room);
+  } catch (error) {
+    showError(error.message);
+  }
+});
+
+acceptButton.addEventListener("click", async () => {
+  clearError();
+  try {
+    const room = await api("/api/accept", {
       code: state.room.code,
       playerId: state.playerId
     });
@@ -135,6 +152,7 @@ function render(room) {
   renderPlayers(room);
   renderChain(room);
   renderSuggestions(room.suggestions || []);
+  renderReview(room);
   updateControls(room);
   updateTimer(room.secondsLeft);
 }
@@ -183,21 +201,46 @@ function renderSuggestions(suggestions) {
   });
 }
 
+function renderReview(room) {
+  if (!room.pendingReview) {
+    reviewPanel.classList.add("hidden");
+    reviewPhrase.textContent = "";
+    reviewCopy.textContent = "";
+    return;
+  }
+
+  const you = room.players.find((player) => player.isYou);
+  const isReviewer = Boolean(you && room.activePlayerId === you.id);
+  reviewPanel.classList.remove("hidden");
+  reviewPhrase.textContent = room.pendingReview.phrase;
+  reviewCopy.textContent = isReviewer
+    ? `${room.pendingReview.playerName} played this unknown link. Accept it or challenge the round.`
+    : `Waiting for ${room.activePlayerName} to accept or challenge your link.`;
+}
+
 function updateControls(room) {
   const you = room.players.find((player) => player.isYou);
   const isYourTurn = Boolean(you && room.activePlayerId === you.id && room.status === "playing");
   const last = room.chain[room.chain.length - 1];
+  const isReviewer = Boolean(you && room.activePlayerId === you.id && room.status === "reviewing");
   const canChallenge = Boolean(
     room.settings.challenges &&
-    room.status === "playing" &&
-    last &&
-    last.playerId !== "system" &&
-    last.playerId !== state.playerId &&
-    !last.challenged
+    (
+      isReviewer ||
+      (
+        room.status === "playing" &&
+        last &&
+        last.playerId !== "system" &&
+        last.playerId !== state.playerId &&
+        last.validationType !== "accepted" &&
+        !last.challenged
+      )
+    )
   );
 
   playForm.querySelector("input").disabled = !isYourTurn;
   playForm.querySelector("button").disabled = !isYourTurn;
+  acceptButton.disabled = !isReviewer;
   challengeButton.disabled = !canChallenge;
   rematchButton.disabled = room.players.length < 1;
 }
