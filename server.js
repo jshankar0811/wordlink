@@ -81,6 +81,15 @@ server.listen(PORT, () => {
 });
 
 async function handleApi(req, res, url) {
+  if (req.method === "GET" && url.pathname === "/api/health") {
+    return sendJson(res, 200, {
+      ok: true,
+      status: "healthy",
+      rooms: rooms.size,
+      uptimeSeconds: Math.round(process.uptime())
+    });
+  }
+
   if (req.method === "GET" && url.pathname === "/api/events") {
     handleEvents(req, res, url);
     return;

@@ -10,6 +10,16 @@ npm start
 
 Then open `http://localhost:3000`.
 
+## Deploy on Railway
+
+This repo includes `railway.json` so Railway can deploy the app from GitHub.
+
+- Build command: `npm install`
+- Start command: `npm start`
+- Healthcheck path: `/api/health`
+
+After deployment, use the Railway public domain as the shared game URL.
+
 ## Rules
 
 - The game starts from a random compound word.
