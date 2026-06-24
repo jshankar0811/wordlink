@@ -23,6 +23,9 @@ The app currently supports:
 - live turn sync with Server-Sent Events
 - randomized starting compounds
 - timers
+- target score selection
+- 2-point ending-word plays
+- 1-point starting-word fallback plays
 - repeated-link blocking
 - known compound validation
 - closed-compound validation, such as `out + side = outside`
@@ -49,11 +52,14 @@ https://github.com/jshankar0811/wordlink
 - The game starts with a random compound.
 - The active prompt is the second part of that compound.
 - The next player submits one word to complete a new compound.
+- Using the ending word from the previous compound is worth 2 points.
+- If a player is stuck, they can use the starting word from the previous compound for 1 point.
 - If the app recognizes the link, it is accepted automatically.
 - If the app does not recognize the link, the opponent can accept or challenge it.
 - If accepted, the chain continues.
 - If challenged, the submitter loses the round.
 - Reusing a link is not allowed.
+- The first player to reach the agreed target score wins.
 - Running out of time loses the round.
 
 ## Validation Model
@@ -92,6 +98,7 @@ Core UX improvements to consider next:
 
 - disable the play input while waiting for Player B
 - show clearer copy/share room affordances
+- add a pre-game confirmation step once both players join
 - add a visible "waiting for opponent" state after submitting an unknown link
 - add sound and subtle tile animations
 - add a short rules modal

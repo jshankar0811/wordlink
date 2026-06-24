@@ -26,5 +26,8 @@ After deployment, use the Railway public domain as the shared game URL.
 - The next player must use the ending word as the start of a new compound.
 - Example: `side line` gives the prompt `line`; a player can submit `dance` to make `line dance`.
 - Repeating a compound is not allowed.
+- Using the ending word is worth 2 points.
+- Using the starting word as a fallback is worth 1 point.
+- The host chooses the target score before creating the room.
 - A turn can be challenged by the opponent.
 - The timer can be configured per room.

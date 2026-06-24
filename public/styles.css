@@ -289,7 +289,7 @@ h2 {
 
 .turn-board {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 128px;
+  grid-template-columns: minmax(0, 1fr) 128px 128px;
   gap: 1px;
   overflow: hidden;
   margin-bottom: 18px;
@@ -342,6 +342,41 @@ h2 {
 
 .turn-strip strong {
   font-size: 24px;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mode-option {
+  display: grid;
+  gap: 4px;
+  min-height: 64px;
+  border: 2px solid var(--line);
+  color: var(--ink);
+  background: #fff;
+}
+
+.mode-option:hover {
+  background: #f2f4ee;
+}
+
+.mode-option.active {
+  border-color: var(--green);
+  color: #fff;
+  background: var(--green);
+}
+
+.mode-option span {
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.mode-option strong {
+  font-size: 20px;
 }
 
 .play-form {
@@ -431,6 +466,11 @@ h2 {
   padding: 12px;
   background: #fff;
   font-weight: 950;
+}
+
+.player-score {
+  font-size: 26px;
+  line-height: 1;
 }
 
 .player small {

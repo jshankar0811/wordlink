@@ -148,6 +148,7 @@ function createRoom(body) {
   const host = makePlayer(body.name || "Player A");
   const settings = {
     timerSeconds: clamp(Number(body.timerSeconds) || 45, 10, 120),
+    targetScore: clamp(Number(body.targetScore) || 10, 4, 50),
     challenges: body.challenges !== false
   };
   const start = randomStartingPair();
@@ -155,6 +156,7 @@ function createRoom(body) {
     code,
     settings,
     players: [host],
+    scores: { [host.id]: 0 },
     status: "waiting",
     turnIndex: 0,
     startPair: start,
@@ -190,6 +192,7 @@ function joinRoom(room, body) {
 
   const player = makePlayer(body.name || "Player B");
   room.players.push(player);
+  room.scores[player.id] = 0;
   room.status = "playing";
   room.turnIndex = Math.floor(Math.random() * 2);
   room.deadline = Date.now() + room.settings.timerSeconds * 1000;
@@ -212,7 +215,9 @@ function playTurn(body) {
   if (!second) return fail(400, "Enter one word to link.");
   if (!/^[a-z]+$/.test(second)) return fail(400, "Use letters only for the linked word.");
 
-  const first = room.currentPrompt;
+  const promptMode = body.promptMode === "start" ? "start" : "end";
+  const points = promptMode === "start" ? 1 : 2;
+  const first = getPromptForMode(room, promptMode);
   const key = pairKey(first, second);
   const validation = validateLink(first, second);
   if (room.usedPairs.has(key)) return fail(409, `"${formatPair(first, second)}" was already used.`);
@@ -223,12 +228,14 @@ function playTurn(body) {
       second,
       playerId: player.id,
       playerName: player.name,
+      promptMode,
+      points,
       at: Date.now()
     };
     room.status = "reviewing";
     room.turnIndex = 1 - room.turnIndex;
     room.deadline = null;
-    room.message = `${room.players[room.turnIndex].name} can accept or challenge "${formatPair(first, second)}".`;
+    room.message = `${room.players[room.turnIndex].name} can accept or challenge "${formatPair(first, second)}" for ${points} point${points === 1 ? "" : "s"}.`;
     broadcast(room.code);
     return { status: 202, payload: viewRoom(room, body.playerId) };
   }
@@ -241,14 +248,11 @@ function playTurn(body) {
     challenged: false,
     valid: true,
     validationType: validation.type,
+    promptMode,
+    points,
     at: Date.now()
   };
-  room.chain.push(entry);
-  room.usedPairs.add(key);
-  room.currentPrompt = second;
-  room.turnIndex = 1 - room.turnIndex;
-  room.deadline = Date.now() + room.settings.timerSeconds * 1000;
-  room.message = `${player.name} played "${formatLink(first, second, validation.type)}".`;
+  applyAcceptedEntry(room, entry, playerIndex, `${player.name} played "${formatLink(first, second, validation.type)}" for ${points} point${points === 1 ? "" : "s"}.`);
   broadcast(room.code);
   return { status: 200, payload: viewRoom(room, body.playerId) };
 }
@@ -274,16 +278,13 @@ function acceptPendingTurn(body) {
     challenged: false,
     valid: true,
     validationType: "accepted",
+    promptMode: pending.promptMode,
+    points: pending.points,
     at: Date.now()
   };
 
-  room.chain.push(entry);
-  room.usedPairs.add(key);
-  room.currentPrompt = pending.second;
-  room.status = "playing";
   room.pendingReview = null;
-  room.deadline = Date.now() + room.settings.timerSeconds * 1000;
-  room.message = `${room.players[reviewerIndex].name} accepted "${formatPair(entry.first, entry.second)}".`;
+  applyAcceptedEntry(room, entry, 1 - reviewerIndex, `${room.players[reviewerIndex].name} accepted "${formatPair(entry.first, entry.second)}" for ${entry.points} point${entry.points === 1 ? "" : "s"}.`);
   broadcast(room.code);
   return { status: 200, payload: viewRoom(room, body.playerId) };
 }
@@ -341,6 +342,7 @@ function rematch(body) {
   const start = randomStartingPair();
   room.status = room.players.length === 2 ? "playing" : "waiting";
   room.turnIndex = room.players.length === 2 ? Math.floor(Math.random() * 2) : 0;
+  room.scores = Object.fromEntries(room.players.map((player) => [player.id, 0]));
   room.startPair = start;
   room.currentPrompt = start[1];
   room.pendingReview = null;
@@ -407,15 +409,19 @@ function viewRoom(room, viewerId) {
     players: room.players.map((player) => ({
       id: player.id,
       name: player.name,
+      score: room.scores[player.id] || 0,
       isYou: player.id === viewerId
     })),
     activePlayerId: active?.id || null,
     activePlayerName: active?.name || null,
     currentPrompt: room.currentPrompt,
+    promptOptions: getPromptOptions(room),
     pendingReview: room.pendingReview ? {
       first: room.pendingReview.first,
       second: room.pendingReview.second,
       phrase: formatPair(room.pendingReview.first, room.pendingReview.second),
+      points: room.pendingReview.points,
+      promptMode: room.pendingReview.promptMode,
       playerId: room.pendingReview.playerId,
       playerName: room.pendingReview.playerName,
       at: room.pendingReview.at
@@ -428,6 +434,8 @@ function viewRoom(room, viewerId) {
       validationType: entry.validationType || "pair",
       playerName: entry.playerName,
       playerId: entry.playerId,
+      points: entry.points || 0,
+      promptMode: entry.promptMode || "end",
       challenged: entry.challenged,
       at: entry.at
     })),
@@ -435,7 +443,11 @@ function viewRoom(room, viewerId) {
     winnerId: room.winnerId,
     winnerName: room.players.find((player) => player.id === room.winnerId)?.name || null,
     message: room.message,
-    suggestions: room.status === "playing" ? getSuggestions(room.currentPrompt, 4) : []
+    suggestions: room.status === "playing" ? getRoomSuggestions(room, "end", 4) : [],
+    suggestionsByMode: room.status === "playing" ? {
+      end: getRoomSuggestions(room, "end", 4),
+      start: getRoomSuggestions(room, "start", 4)
+    } : { end: [], start: [] }
   };
 }
 
@@ -466,6 +478,48 @@ function randomStartingPair() {
   return ["side", "line"];
 }
 
+function getPromptOptions(room) {
+  const last = room.chain[room.chain.length - 1];
+  return {
+    end: {
+      word: last?.second || room.currentPrompt,
+      points: 2,
+      label: "Ending word"
+    },
+    start: {
+      word: last?.first || room.currentPrompt,
+      points: 1,
+      label: "Starting word"
+    }
+  };
+}
+
+function getPromptForMode(room, mode) {
+  const options = getPromptOptions(room);
+  return options[mode]?.word || options.end.word;
+}
+
+function applyAcceptedEntry(room, entry, playerIndex, message) {
+  const player = room.players[playerIndex];
+  room.chain.push(entry);
+  room.usedPairs.add(pairKey(entry.first, entry.second));
+  room.currentPrompt = entry.second;
+  room.scores[player.id] = (room.scores[player.id] || 0) + (entry.points || 0);
+
+  if (room.scores[player.id] >= room.settings.targetScore) {
+    room.status = "finished";
+    room.winnerId = player.id;
+    room.deadline = null;
+    room.message = `${message} ${player.name} reached ${room.scores[player.id]} points and wins.`;
+    return;
+  }
+
+  room.status = "playing";
+  room.turnIndex = 1 - playerIndex;
+  room.deadline = Date.now() + room.settings.timerSeconds * 1000;
+  room.message = message;
+}
+
 function makeRoomCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -482,8 +536,10 @@ function makePlayer(name) {
   };
 }
 
-function getSuggestions(first, limit = 6) {
+function getRoomSuggestions(room, mode, limit = 4) {
+  const first = getPromptForMode(room, mode);
   return Array.from(nextWords.get(first) || [])
+    .filter((second) => !room.usedPairs.has(pairKey(first, second)))
     .slice(0, limit)
     .map((second) => formatLink(first, second, validateLink(first, second).type));
 }

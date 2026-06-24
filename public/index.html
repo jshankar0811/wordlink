@@ -45,6 +45,15 @@
                 <option value="90">90 seconds</option>
               </select>
             </label>
+            <label>
+              Target score
+              <select name="targetScore">
+                <option value="6">6 points</option>
+                <option value="10" selected>10 points</option>
+                <option value="16">16 points</option>
+                <option value="20">20 points</option>
+              </select>
+            </label>
             <label class="toggle-row">
               <input name="challenges" type="checkbox" checked>
               <span>Allow challenges</span>
@@ -92,6 +101,10 @@
             <p id="gameMessage">Waiting for the room.</p>
           </div>
           <div class="timer-card">
+            <span class="label">Target</span>
+            <strong id="targetScore">--</strong>
+          </div>
+          <div class="timer-card">
             <span class="label">Timer</span>
             <strong id="timer">--</strong>
           </div>
@@ -103,6 +116,17 @@
               <div class="turn-strip">
                 <span class="label">Turn</span>
                 <strong id="turnName">-</strong>
+              </div>
+
+              <div class="mode-switch" id="modeSwitch" aria-label="Scoring mode">
+                <button class="mode-option active" data-mode="end" type="button">
+                  <span>Ending word</span>
+                  <strong>2 pts</strong>
+                </button>
+                <button class="mode-option" data-mode="start" type="button">
+                  <span>Starting word</span>
+                  <strong>1 pt</strong>
+                </button>
               </div>
 
               <form id="playForm" class="play-form">

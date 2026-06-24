@@ -19,6 +19,15 @@ const errorText = document.querySelector("#errorText");
 const reviewPanel = document.querySelector("#reviewPanel");
 const reviewPhrase = document.querySelector("#reviewPhrase");
 const reviewCopy = document.querySelector("#reviewCopy");
+const modeButtons = document.querySelectorAll(".mode-option");
+
+modeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    state.promptMode = button.dataset.mode;
+    updateModeButtons();
+    renderPrompt(state.room);
+  });
+});
 
 createForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -27,6 +36,7 @@ createForm.addEventListener("submit", async (event) => {
   const payload = {
     name: form.get("name"),
     timerSeconds: Number(form.get("timerSeconds")),
+    targetScore: Number(form.get("targetScore")),
     challenges: form.get("challenges") === "on"
   };
   const room = await api("/api/rooms", payload);
@@ -52,6 +62,7 @@ playForm.addEventListener("submit", async (event) => {
     const room = await api("/api/play", {
       code: state.room.code,
       playerId: state.playerId,
+      promptMode: state.promptMode || "end",
       word
     });
     playForm.reset();
@@ -142,8 +153,8 @@ function subscribe(code) {
 function render(room) {
   state.room = room;
   document.querySelector("#roomLine").textContent = `Room ${room.code}`;
-  document.querySelector("#promptWord").textContent = room.currentPrompt;
-  document.querySelector("#fixedWord").textContent = room.currentPrompt;
+  document.querySelector("#targetScore").textContent = room.settings.targetScore;
+  renderPrompt(room);
   document.querySelector("#turnName").textContent = room.activePlayerName || "-";
   document.querySelector("#gameMessage").textContent = room.winnerName
     ? `${room.winnerName} wins. ${room.message}`
@@ -151,10 +162,20 @@ function render(room) {
 
   renderPlayers(room);
   renderChain(room);
-  renderSuggestions(room.suggestions || []);
+  renderSuggestions(getSuggestionsForMode(room));
   renderReview(room);
   updateControls(room);
   updateTimer(room.secondsLeft);
+}
+
+function renderPrompt(room) {
+  if (!room) return;
+  const mode = state.promptMode || "end";
+  const option = room.promptOptions?.[mode] || room.promptOptions?.end;
+  const word = option?.word || room.currentPrompt;
+  document.querySelector("#promptWord").textContent = word;
+  document.querySelector("#fixedWord").textContent = word;
+  renderSuggestions(getSuggestionsForMode(room));
 }
 
 function renderPlayers(room) {
@@ -163,7 +184,11 @@ function renderPlayers(room) {
   for (const player of room.players) {
     const item = document.createElement("div");
     item.className = `player${player.id === room.activePlayerId ? " active" : ""}`;
-    item.innerHTML = `<span>${escapeHtml(player.name)}${player.isYou ? " (you)" : ""}</span><small>${player.id === room.activePlayerId ? "turn" : ""}</small>`;
+    item.innerHTML = `
+      <span>${escapeHtml(player.name)}${player.isYou ? " (you)" : ""}</span>
+      <strong class="player-score">${player.score || 0}</strong>
+      <small>${player.id === room.activePlayerId ? "turn" : "points"}</small>
+    `;
     players.append(item);
   }
   if (room.players.length < 2) {
@@ -185,7 +210,7 @@ function renderChain(room) {
         <span class="chain-arrow">to</span>
         <span class="chain-word">${escapeHtml(entry.second)}</span>
       </div>
-      <span class="chain-meta">${escapeHtml(entry.playerName)}</span>
+      <span class="chain-meta">${escapeHtml(entry.playerName)}${entry.points ? ` · ${entry.points} pt${entry.points === 1 ? "" : "s"}` : ""}</span>
     `;
     chain.append(item);
   });
@@ -198,6 +223,12 @@ function renderSuggestions(suggestions) {
     const chip = document.createElement("span");
     chip.textContent = suggestion;
     container.append(chip);
+  });
+}
+
+function updateModeButtons() {
+  modeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === (state.promptMode || "end"));
   });
 }
 
@@ -214,8 +245,13 @@ function renderReview(room) {
   reviewPanel.classList.remove("hidden");
   reviewPhrase.textContent = room.pendingReview.phrase;
   reviewCopy.textContent = isReviewer
-    ? `${room.pendingReview.playerName} played this unknown link. Accept it or challenge the round.`
+    ? `${room.pendingReview.playerName} played this unknown link for ${room.pendingReview.points} point${room.pendingReview.points === 1 ? "" : "s"}. Accept it or challenge the round.`
     : `Waiting for ${room.activePlayerName} to accept or challenge your link.`;
+}
+
+function getSuggestionsForMode(room) {
+  const mode = state.promptMode || "end";
+  return room?.suggestionsByMode?.[mode] || room?.suggestions || [];
 }
 
 function updateControls(room) {
@@ -240,6 +276,9 @@ function updateControls(room) {
 
   playForm.querySelector("input").disabled = !isYourTurn;
   playForm.querySelector("button").disabled = !isYourTurn;
+  modeButtons.forEach((button) => {
+    button.disabled = !isYourTurn;
+  });
   acceptButton.disabled = !isReviewer;
   challengeButton.disabled = !canChallenge;
   rematchButton.disabled = room.players.length < 1;
