@@ -1,9 +1,9 @@
 const WORDLINK_AVATARS = [
-  ...Array.from({ length: 24 }, (_, index) => {
+  ...Array.from({ length: 36 }, (_, index) => {
     const number = String(index + 1).padStart(2, "0");
     return {
       id: `avatar_${number}`,
-      image: `/avatars/avatar_${number}.svg`,
+      image: `/avatars/avatar_${number}.png`,
       name: `Avatar ${index + 1}`
     };
   }),
