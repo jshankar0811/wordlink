@@ -29,7 +29,15 @@ const minigameForm = document.querySelector("#minigameForm");
 let minigameOpen = false;
 let minigameSubmitting = false;
 
+function avatarMarkup(avatar) {
+  return avatar.image
+    ? `<img src="${avatar.image}" alt="" draggable="false">`
+    : avatar.emoji;
+}
+
 document.querySelectorAll("[data-avatar-picker]").forEach(picker => {
+  const savedAvatar = localStorage.getItem("wordlink.avatar");
+  const selectedAvatar = WORDLINK_AVATARS.find(avatar => avatar.id === savedAvatar) || WORDLINK_AVATARS[0];
   for (const avatar of WORDLINK_AVATARS) {
     const label = document.createElement("label");
     label.className = "avatar-option";
@@ -38,11 +46,11 @@ document.querySelectorAll("[data-avatar-picker]").forEach(picker => {
     input.type = "radio";
     input.name = "avatar";
     input.value = avatar.id;
-    input.checked = avatar.id === (localStorage.getItem("wordlink.avatar") || "fox");
+    input.checked = avatar.id === selectedAvatar.id;
     input.setAttribute("aria-label", avatar.name);
     input.addEventListener("change", () => localStorage.setItem("wordlink.avatar", avatar.id));
     const face = document.createElement("span");
-    face.textContent = avatar.emoji;
+    face.innerHTML = avatarMarkup(avatar);
     face.setAttribute("aria-hidden", "true");
     label.append(input, face);
     picker.append(label);
@@ -277,8 +285,8 @@ function render(room) {
   document.querySelector("#roomLine").textContent = `Room ${room.code}`;
   document.querySelector("#targetScore").textContent = room.settings.targetScore;
   renderPrompt(room);
-  const activeAvatar = WORDLINK_AVATARS.find(avatar => avatar.id === room.players.find(player => player.id === room.activePlayerId)?.avatar);
-  document.querySelector("#turnName").textContent = `${activeAvatar?.emoji || ""} ${room.activePlayerName || "-"}`.trim();
+  const activeAvatar = WORDLINK_AVATARS.find(avatar => avatar.id === room.players.find(player => player.id === room.activePlayerId)?.avatar) || WORDLINK_AVATARS[0];
+  document.querySelector("#turnName").innerHTML = `<span class="player-avatar" aria-hidden="true">${avatarMarkup(activeAvatar)}</span><span>${escapeHtml(room.activePlayerName || "-")}</span>`;
   document.querySelector("#gameMessage").textContent = room.winnerName
     ? `${room.winnerName} wins. ${room.message}`
     : room.message;
@@ -316,7 +324,7 @@ function renderPlayers(room) {
     item.className = `player${player.id === room.activePlayerId ? " active" : ""}`;
     const avatar = WORDLINK_AVATARS.find(option => option.id === player.avatar) || WORDLINK_AVATARS[0];
     item.innerHTML = `
-      <span class="player-identity"><span class="player-avatar" role="img" aria-label="${avatar.name}">${avatar.emoji}</span><span>${escapeHtml(player.name)}${player.isYou ? " (you)" : ""}</span></span>
+      <span class="player-identity"><span class="player-avatar" role="img" aria-label="${avatar.name}">${avatarMarkup(avatar)}</span><span>${escapeHtml(player.name)}${player.isYou ? " (you)" : ""}</span></span>
       <strong class="player-score">${player.score || 0}</strong>
       <small>${player.id === room.activePlayerId ? "turn" : "points"}</small>
     `;
