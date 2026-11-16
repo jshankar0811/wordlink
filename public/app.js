@@ -418,8 +418,12 @@ function renderMinigame(room) {
     }
     board.append(row);
   }
-  minigameForm.elements.word.maxLength = game.type === "wordle" ? 4 : (game.masked || game.scrambled).length;
-  minigameForm.elements.word.minLength = minigameForm.elements.word.maxLength;
+  const wordLength = game.type === "wordle" ? 4 : (game.masked || game.scrambled).length;
+  // Clear the old minimum before switching from a six-letter game to Wordle.
+  minigameForm.elements.word.minLength = 0;
+  minigameForm.elements.word.maxLength = wordLength;
+  minigameForm.elements.word.minLength = wordLength;
+  minigameForm.elements.word.placeholder = `${wordLength} letters`;
   document.querySelector("#minigameInputLabel").textContent = {
     wordle: "Your four-letter guess", anagram: "Unscramble the word", missing: "Enter the complete word"
   }[game.type];
