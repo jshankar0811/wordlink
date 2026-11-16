@@ -36,6 +36,10 @@
               Your name
               <input name="name" maxlength="24" autocomplete="name" placeholder="Player A" required>
             </label>
+            <fieldset class="avatar-picker">
+              <legend>Your avatar</legend>
+              <div class="avatar-options" data-avatar-picker></div>
+            </fieldset>
             <label>
               Turn timer
               <select name="timerSeconds">
@@ -70,6 +74,10 @@
               Your name
               <input name="name" maxlength="24" autocomplete="name" placeholder="Player B" required>
             </label>
+            <fieldset class="avatar-picker">
+              <legend>Your avatar</legend>
+              <div class="avatar-options" data-avatar-picker></div>
+            </fieldset>
             <label>
               Room code
               <input name="code" maxlength="5" class="code-input" placeholder="A7K2Q" required>
@@ -105,7 +113,7 @@
             <strong id="targetScore">--</strong>
           </div>
           <div class="timer-card">
-            <span class="label">Timer</span>
+            <span class="label" id="timerLabel">Timer</span>
             <strong id="timer">--</strong>
           </div>
         </section>
@@ -139,7 +147,6 @@
               </form>
 
               <p class="error" id="errorText" role="alert"></p>
-              <div class="suggestions" id="suggestions"></div>
 
               <div class="review-panel hidden" id="reviewPanel">
                 <span class="label">Review link</span>
@@ -153,7 +160,36 @@
               <div class="response-row">
                 <button class="ghost" id="challengeButton" type="button">Challenge</button>
                 <button class="ghost" id="rematchButton" type="button">Rematch</button>
+                <button class="ghost" id="minigameButton" type="button" aria-expanded="false" aria-controls="minigamePanel">Win a new word</button>
+                <button class="ghost new-word-toggle" id="newWordButton" type="button" aria-expanded="false" aria-controls="newWordForm">New word · −6 pts</button>
               </div>
+              <section class="minigame-panel hidden" id="minigamePanel" aria-labelledby="minigameTitle">
+                <h2 id="minigameTitle">Win a new word</h2>
+                <p id="minigameCopy"></p>
+                <div class="review-actions" id="minigameIntro">
+                  <button id="startMinigameButton" type="button">Start · 60 seconds</button>
+                  <button class="ghost" id="closeMinigameButton" type="button">Cancel</button>
+                </div>
+                <div id="minigameBoard" class="minigame-board" role="log" aria-label="Minigame guesses"></div>
+                <p class="minigame-legend hidden" id="minigameLegend">Green = right spot · Gold = different spot · Gray = absent</p>
+                <form class="minigame-form hidden" id="minigameForm">
+                  <label for="minigameInput" id="minigameInputLabel">Your guess</label>
+                  <div class="minigame-entry">
+                    <input id="minigameInput" name="word" autocomplete="off" autocapitalize="none" spellcheck="false" pattern="[A-Za-z]+" required>
+                    <button type="submit">Guess</button>
+                  </div>
+                </form>
+                <p class="error" id="minigameError" role="alert"></p>
+              </section>
+              <form class="new-word-form hidden" id="newWordForm">
+                <label for="newWordInput">Choose a new starting word</label>
+                <p id="newWordHelp">Spend 6 points and pass the turn to your opponent.</p>
+                <input id="newWordInput" name="word" autocomplete="off" placeholder="new word" maxlength="24" pattern="[A-Za-z]+" aria-describedby="newWordHelp" required>
+                <div class="review-actions">
+                  <button type="submit">Spend 6 points</button>
+                  <button class="ghost" id="cancelNewWordButton" type="button">Cancel</button>
+                </div>
+              </form>
             </div>
           </section>
 
@@ -169,6 +205,7 @@
       </section>
     </main>
 
+    <script src="/avatars.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

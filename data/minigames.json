@@ -1,0 +1,287 @@
+{
+  "wordle": [
+    "bird",
+    "cake",
+    "drum",
+    "fish",
+    "frog",
+    "glow",
+    "gold",
+    "leaf",
+    "moon",
+    "nest",
+    "pear",
+    "rain",
+    "ring",
+    "snow",
+    "star",
+    "tree",
+    "wave",
+    "wind",
+    "wolf",
+    "bear",
+    "boat",
+    "book",
+    "bowl",
+    "coat",
+    "coin",
+    "corn",
+    "crab",
+    "crow",
+    "deer",
+    "desk",
+    "door",
+    "duck",
+    "dust",
+    "face",
+    "farm",
+    "fire",
+    "flag",
+    "fork",
+    "gate",
+    "gift",
+    "goat",
+    "hand",
+    "hare",
+    "hill",
+    "home",
+    "hope",
+    "horn",
+    "hour",
+    "iron",
+    "jump",
+    "kite",
+    "lake",
+    "lamb",
+    "lamp",
+    "land",
+    "lion",
+    "lock",
+    "luck",
+    "mail",
+    "mask",
+    "milk",
+    "mint",
+    "mist",
+    "mole",
+    "nail",
+    "neck",
+    "news",
+    "note",
+    "oven",
+    "palm",
+    "park",
+    "path",
+    "pink",
+    "pond",
+    "pool",
+    "port",
+    "quiz",
+    "race",
+    "raft",
+    "rice",
+    "road",
+    "rock",
+    "roof",
+    "room",
+    "rose",
+    "ruby",
+    "sail",
+    "salt",
+    "sand",
+    "seal",
+    "seed",
+    "ship",
+    "shoe",
+    "shop",
+    "silk",
+    "soap",
+    "sock",
+    "song",
+    "soup",
+    "spot",
+    "stem",
+    "team",
+    "tent",
+    "tide",
+    "time",
+    "toad",
+    "town",
+    "tray",
+    "tune",
+    "vase",
+    "vine",
+    "wall",
+    "warm",
+    "wash",
+    "well",
+    "west",
+    "wing",
+    "wish",
+    "wood",
+    "yarn",
+    "zero"
+  ],
+  "anagrams": [
+    [
+      "garden",
+      "A place to grow flowers"
+    ],
+    [
+      "planet",
+      "A world orbiting a star"
+    ],
+    [
+      "pencil",
+      "A tool with an eraser"
+    ],
+    [
+      "castle",
+      "A royal home with towers"
+    ],
+    [
+      "basket",
+      "A woven container"
+    ],
+    [
+      "candle",
+      "A little light made of wax"
+    ],
+    [
+      "forest",
+      "A place full of trees"
+    ],
+    [
+      "pillow",
+      "A soft place for your head"
+    ],
+    [
+      "silver",
+      "A shiny precious metal"
+    ],
+    [
+      "rabbit",
+      "A hopping animal with long ears"
+    ],
+    [
+      "window",
+      "A view through a wall"
+    ],
+    [
+      "bottle",
+      "A container with a narrow neck"
+    ],
+    [
+      "anchor",
+      "It keeps a boat in place"
+    ],
+    [
+      "banana",
+      "A curved yellow fruit"
+    ],
+    [
+      "bridge",
+      "A way across a river"
+    ],
+    [
+      "camera",
+      "It takes photographs"
+    ],
+    [
+      "carrot",
+      "An orange root vegetable"
+    ],
+    [
+      "cheese",
+      "A food often melted on pizza"
+    ],
+    [
+      "cherry",
+      "A small red fruit with a pit"
+    ],
+    [
+      "circle",
+      "A shape with no corners"
+    ],
+    [
+      "coffee",
+      "A drink brewed from roasted beans"
+    ],
+    [
+      "cookie",
+      "A small sweet baked treat"
+    ],
+    [
+      "desert",
+      "A dry landscape with very little rain"
+    ],
+    [
+      "dragon",
+      "A mythical fire-breathing creature"
+    ],
+    [
+      "flower",
+      "A plant part with colorful petals"
+    ],
+    [
+      "guitar",
+      "A musical instrument with six strings"
+    ],
+    [
+      "helmet",
+      "Protective gear worn on your head"
+    ],
+    [
+      "island",
+      "Land surrounded by water"
+    ],
+    [
+      "jacket",
+      "A short coat worn outdoors"
+    ],
+    [
+      "jungle",
+      "A dense tropical forest"
+    ],
+    [
+      "kitten",
+      "A young cat"
+    ],
+    [
+      "ladder",
+      "A tool with rungs for climbing"
+    ],
+    [
+      "magnet",
+      "It attracts iron"
+    ],
+    [
+      "monkey",
+      "A primate often seen swinging through trees"
+    ],
+    [
+      "orange",
+      "A citrus fruit with the same name as its color"
+    ],
+    [
+      "parrot",
+      "A bird famous for mimicking speech"
+    ],
+    [
+      "pocket",
+      "A small storage space sewn into clothing"
+    ],
+    [
+      "rocket",
+      "A vehicle launched into space"
+    ],
+    [
+      "turtle",
+      "A reptile with a protective shell"
+    ],
+    [
+      "violin",
+      "A four-stringed instrument played with a bow"
+    ]
+  ]
+}

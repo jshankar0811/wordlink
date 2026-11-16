@@ -5,6 +5,9 @@ const crypto = require("crypto");
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "public");
+const NEW_WORD_COST = 6;
+const avatars = require("./public/avatars.js");
+const { wordle: miniWords, anagrams } = require("./data/minigames.json");
 const compounds = require("./data/compounds.json");
 const joinedWords = require("./data/joined-words.json").map(normalizeWord);
 
@@ -64,6 +67,7 @@ const server = http.createServer((req, res) => {
 setInterval(() => {
   const now = Date.now();
   for (const room of rooms.values()) {
+    expireMinigame(room);
     if (room.status === "playing" && room.deadline && now >= room.deadline) {
       const active = room.players[room.turnIndex];
       const other = room.players[1 - room.turnIndex];
@@ -122,6 +126,22 @@ async function handleApi(req, res, url) {
     return sendJson(res, result.status, result.payload);
   }
 
+  if (req.method === "POST" && url.pathname === "/api/new-word") {
+    const body = await readBody(req);
+    const result = playNewWord(body);
+    return sendJson(res, result.status, result.payload);
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/minigame/start") {
+    const result = startMinigame(await readBody(req));
+    return sendJson(res, result.status, result.payload);
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/minigame/guess") {
+    const result = guessMinigame(await readBody(req));
+    return sendJson(res, result.status, result.payload);
+  }
+
   if (req.method === "POST" && url.pathname === "/api/challenge") {
     const body = await readBody(req);
     const result = challengeTurn(body);
@@ -145,7 +165,7 @@ async function handleApi(req, res, url) {
 
 function createRoom(body) {
   const code = makeRoomCode();
-  const host = makePlayer(body.name || "Player A");
+  const host = makePlayer(body.name || "Player A", body.avatar);
   const settings = {
     timerSeconds: clamp(Number(body.timerSeconds) || 45, 10, 120),
     targetScore: clamp(Number(body.targetScore) || 10, 4, 50),
@@ -162,6 +182,9 @@ function createRoom(body) {
     startPair: start,
     currentPrompt: start[1],
     pendingReview: null,
+    minigame: null,
+    minigameUsed: false,
+    usedMinigames: new Set(),
     usedPairs: new Set([pairKey(start[0], start[1])]),
     chain: [
       {
@@ -190,7 +213,7 @@ function joinRoom(room, body) {
     return { status: 409, payload: { error: "This room already has two players." } };
   }
 
-  const player = makePlayer(body.name || "Player B");
+  const player = makePlayer(body.name || "Player B", body.avatar);
   room.players.push(player);
   room.scores[player.id] = 0;
   room.status = "playing";
@@ -210,6 +233,8 @@ function playTurn(body) {
   const playerIndex = room.players.findIndex((player) => player.id === body.playerId);
   if (playerIndex < 0) return fail(403, "You are not in this room.");
   if (playerIndex !== room.turnIndex) return fail(409, "It is not your turn.");
+
+  if (!room.deadline || Date.now() >= room.deadline) return fail(409, "Your turn has run out of time.");
 
   const second = normalizeWord(body.word);
   if (!second) return fail(400, "Enter one word to link.");
@@ -253,6 +278,142 @@ function playTurn(body) {
     at: Date.now()
   };
   applyAcceptedEntry(room, entry, playerIndex, `${player.name} played "${formatLink(first, second, validation.type)}" for ${points} point${points === 1 ? "" : "s"}.`);
+  broadcast(room.code);
+  return { status: 200, payload: viewRoom(room, body.playerId) };
+}
+
+function playNewWord(body) {
+  const room = rooms.get(String(body.code || "").trim().toUpperCase());
+  if (!room) return fail(404, "Room not found.");
+  if (room.status !== "playing" || room.pendingReview) return fail(409, "A new word can only be played during an active turn.");
+
+  const playerIndex = room.players.findIndex((player) => player.id === body.playerId);
+  if (playerIndex < 0) return fail(403, "You are not in this room.");
+  if (playerIndex !== room.turnIndex) return fail(409, "It is not your turn.");
+  if (!room.deadline || Date.now() >= room.deadline) return fail(409, "Your turn has run out of time.");
+
+  const player = room.players[playerIndex];
+  const cost = room.minigame?.status === "won" ? 0 : NEW_WORD_COST;
+  if (room.scores[player.id] < cost) return fail(409, `You need ${cost} points to create a new word.`);
+  const word = String(body.word || "").trim().toLowerCase();
+  if (!/^[a-z]{1,24}$/.test(word)) return fail(400, "Enter one word using 1–24 letters.");
+
+  room.chain.push({
+    first: "",
+    second: word,
+    playerId: player.id,
+    playerName: player.name,
+    challenged: false,
+    valid: true,
+    validationType: "reset",
+    points: -cost,
+    at: Date.now()
+  });
+  room.scores[player.id] -= cost;
+  room.minigame = null;
+  room.minigameUsed = false;
+  room.currentPrompt = word;
+  room.turnIndex = 1 - playerIndex;
+  room.deadline = Date.now() + room.settings.timerSeconds * 1000;
+  room.message = cost
+    ? `${player.name} spent ${cost} points to start fresh with "${word}". ${room.players[room.turnIndex].name}'s turn.`
+    : `${player.name} won a new word and chose "${word}". ${room.players[room.turnIndex].name}'s turn.`;
+  broadcast(room.code);
+  return { status: 200, payload: viewRoom(room, body.playerId) };
+}
+
+function startMinigame(body) {
+  const room = rooms.get(String(body.code || "").trim().toUpperCase());
+  if (!room) return fail(404, "Room not found.");
+  if (!room.players.some(player => player.id === body.playerId)) return fail(403, "You are not in this room.");
+  if (room.status !== "playing" || room.players[room.turnIndex].id !== body.playerId) return fail(409, "Start a minigame on your turn.");
+  if (!room.deadline || Date.now() >= room.deadline) return fail(409, "Your turn has run out of time.");
+  if (room.minigameUsed) return fail(409, "You have already tried a minigame this turn.");
+  const types = ["wordle", "anagram", "missing"];
+  const type = types[Math.floor(Math.random() * types.length)];
+  const puzzles = type === "wordle" ? miniWords.map(word => [word, "Guess the four-letter word."]) : anagrams;
+  room.usedMinigames ||= new Set();
+  let available = puzzles.filter(([word]) => !room.usedMinigames.has(`${type}:${word}`));
+  if (!available.length) {
+    for (const [word] of puzzles) room.usedMinigames.delete(`${type}:${word}`);
+    available = puzzles;
+  }
+  const [answer, clue] = available[crypto.randomInt(available.length)];
+  room.usedMinigames.add(`${type}:${answer}`);
+  // Rotate a shuffled answer if the shuffle happens to reproduce the word.
+  const letters = answer.split("");
+  for (let i = letters.length - 1; i > 0; i -= 1) {
+    const j = crypto.randomInt(i + 1);
+    [letters[i], letters[j]] = [letters[j], letters[i]];
+  }
+  const scrambled = letters.join("") === answer ? answer.slice(1) + answer[0] : letters.join("");
+  const hidden = new Set();
+  while (hidden.size < 3) hidden.add(crypto.randomInt(answer.length));
+  const masked = answer.split("").map((letter, index) => hidden.has(index) ? "_" : letter).join("");
+  room.minigame = {
+    id: crypto.randomUUID(), type, answer, clue, scrambled, masked,
+    guesses: [], maxGuesses: type === "wordle" ? 4 : 3,
+    remainingMs: room.deadline - Date.now(),
+    deadline: Date.now() + 60000, status: "active"
+  };
+  room.minigameUsed = true;
+  room.status = "minigame";
+  room.deadline = null;
+  room.message = `${room.players[room.turnIndex].name} is playing to win a new word.`;
+  broadcast(room.code);
+  return { status: 200, payload: viewRoom(room, body.playerId) };
+}
+
+function gradeGuess(answer, word) {
+  const marks = Array(word.length).fill("absent");
+  const remaining = answer.split("");
+  for (let i = 0; i < word.length; i += 1) {
+    if (word[i] === remaining[i]) {
+      marks[i] = "correct";
+      remaining[i] = null;
+    }
+  }
+  for (let i = 0; i < word.length; i += 1) {
+    if (marks[i] === "correct") continue;
+    const index = remaining.indexOf(word[i]);
+    if (index >= 0) {
+      marks[i] = "present";
+      remaining[index] = null;
+    }
+  }
+  return marks;
+}
+
+function finishMinigame(room, won) {
+  room.minigame.status = won ? "won" : "lost";
+  room.status = "playing";
+  room.deadline = Date.now() + room.minigame.remainingMs;
+  room.message = won
+    ? `${room.players[room.turnIndex].name} won! Choose a new starting word for free before your turn timer ends.`
+    : `Minigame over. The word was "${room.minigame.answer}". Continue your original turn.`;
+}
+
+function expireMinigame(room) {
+  if (room.status === "minigame" && Date.now() >= room.minigame.deadline) {
+    finishMinigame(room, false);
+    broadcast(room.code);
+  }
+}
+
+function guessMinigame(body) {
+  const room = rooms.get(String(body.code || "").trim().toUpperCase());
+  if (!room) return fail(404, "Room not found.");
+  if (!room.players.some(player => player.id === body.playerId)) return fail(403, "You are not in this room.");
+  expireMinigame(room);
+  const game = room.minigame;
+  if (room.status !== "minigame" || game?.id !== body.minigameId) return fail(409, "This minigame has ended.");
+  if (room.players[room.turnIndex].id !== body.playerId) return fail(403, "Only the current player can guess.");
+  const word = String(body.word || "").trim().toLowerCase();
+  if (!/^[a-z]+$/.test(word) || word.length !== game.answer.length) return fail(400, `Enter a ${game.answer.length}-letter word.`);
+  if (game.guesses.some(guess => guess.word === word)) return fail(409, "You have already tried that word.");
+  if (game.type === "wordle" && !knownSegments.has(word) && !joinedWords.includes(word) && !miniWords.includes(word)) return fail(400, "Try a word from the dictionary.");
+  game.guesses.push({word, marks: game.type === "wordle" ? gradeGuess(game.answer, word) : []});
+  if (word === game.answer || game.guesses.length >= game.maxGuesses) finishMinigame(room, word === game.answer);
   broadcast(room.code);
   return { status: 200, payload: viewRoom(room, body.playerId) };
 }
@@ -317,6 +478,7 @@ function challengeTurn(body) {
   if (last.playerId === body.playerId) return fail(409, "You cannot challenge your own move.");
   if (last.challenged) return fail(409, "That move has already been challenged.");
   if (last.validationType === "accepted") return fail(409, "That link was already accepted by the opponent.");
+  if (last.validationType === "reset") return fail(409, "A new starting word cannot be challenged.");
 
   last.challenged = true;
   const lastStillValid = validateLink(last.first, last.second).valid;
@@ -346,6 +508,9 @@ function rematch(body) {
   room.startPair = start;
   room.currentPrompt = start[1];
   room.pendingReview = null;
+  room.minigame = null;
+  room.minigameUsed = false;
+  room.usedMinigames = new Set();
   room.usedPairs = new Set([pairKey(start[0], start[1])]);
   room.chain = [{
     first: start[0],
@@ -405,15 +570,30 @@ function viewRoom(room, viewerId) {
   return {
     code: room.code,
     settings: room.settings,
+    newWordCost: NEW_WORD_COST,
     status: room.status,
     players: room.players.map((player) => ({
       id: player.id,
       name: player.name,
+      avatar: player.avatar || avatars[0].id,
       score: room.scores[player.id] || 0,
       isYou: player.id === viewerId
     })),
     activePlayerId: active?.id || null,
     activePlayerName: active?.name || null,
+    minigameUsed: Boolean(room.minigameUsed),
+    minigame: room.minigame ? {
+      id: room.minigame.id,
+      type: room.minigame.type,
+      clue: room.minigame.clue,
+      scrambled: room.minigame.type === "anagram" ? room.minigame.scrambled : null,
+      masked: room.minigame.type === "missing" ? room.minigame.masked : null,
+      guesses: room.minigame.guesses,
+      maxGuesses: room.minigame.maxGuesses,
+      status: room.minigame.status,
+      secondsLeft: Math.max(0, Math.ceil((room.minigame.deadline - Date.now()) / 1000)),
+      answer: room.minigame.status === "lost" ? room.minigame.answer : null
+    } : null,
     currentPrompt: room.currentPrompt,
     promptOptions: getPromptOptions(room),
     pendingReview: room.pendingReview ? {
@@ -429,7 +609,7 @@ function viewRoom(room, viewerId) {
     chain: room.chain.map((entry) => ({
       first: entry.first,
       second: entry.second,
-      phrase: formatPair(entry.first, entry.second),
+      phrase: entry.validationType === "reset" ? entry.second : formatPair(entry.first, entry.second),
       display: formatLink(entry.first, entry.second, entry.validationType),
       validationType: entry.validationType || "pair",
       playerName: entry.playerName,
@@ -442,12 +622,7 @@ function viewRoom(room, viewerId) {
     secondsLeft: room.deadline ? Math.max(0, Math.ceil((room.deadline - Date.now()) / 1000)) : null,
     winnerId: room.winnerId,
     winnerName: room.players.find((player) => player.id === room.winnerId)?.name || null,
-    message: room.message,
-    suggestions: room.status === "playing" ? getRoomSuggestions(room, "end", 4) : [],
-    suggestionsByMode: room.status === "playing" ? {
-      end: getRoomSuggestions(room, "end", 4),
-      start: getRoomSuggestions(room, "start", 4)
-    } : { end: [], start: [] }
+    message: room.message
   };
 }
 
@@ -487,7 +662,7 @@ function getPromptOptions(room) {
       label: "Ending word"
     },
     start: {
-      word: last?.first || room.currentPrompt,
+      word: last?.validationType === "reset" ? last.second : last?.first || room.currentPrompt,
       points: 1,
       label: "Starting word"
     }
@@ -500,6 +675,8 @@ function getPromptForMode(room, mode) {
 }
 
 function applyAcceptedEntry(room, entry, playerIndex, message) {
+  room.minigame = null;
+  room.minigameUsed = false;
   const player = room.players[playerIndex];
   room.chain.push(entry);
   room.usedPairs.add(pairKey(entry.first, entry.second));
@@ -529,19 +706,12 @@ function makeRoomCode() {
   return code;
 }
 
-function makePlayer(name) {
+function makePlayer(name, avatar) {
   return {
     id: crypto.randomUUID(),
-    name: String(name).trim().slice(0, 24) || "Player"
+    name: String(name).trim().slice(0, 24) || "Player",
+    avatar: avatars.some(option => option.id === avatar) ? avatar : avatars[0].id
   };
-}
-
-function getRoomSuggestions(room, mode, limit = 4) {
-  const first = getPromptForMode(room, mode);
-  return Array.from(nextWords.get(first) || [])
-    .filter((second) => !room.usedPairs.has(pairKey(first, second)))
-    .slice(0, limit)
-    .map((second) => formatLink(first, second, validateLink(first, second).type));
 }
 
 function validateLink(first, second) {
@@ -565,6 +735,7 @@ function formatPair(first, second) {
 }
 
 function formatLink(first, second, type) {
+  if (type === "reset") return second;
   return type === "joined" ? `${first}${second}` : formatPair(first, second);
 }
 
