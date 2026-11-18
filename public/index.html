@@ -26,10 +26,18 @@
           </div>
         </header>
 
-        <div class="lobby-grid">
-          <form class="panel" id="createForm">
+        <nav class="home-actions" id="homeView" aria-label="Main menu">
+          <button type="button" data-lobby-view="create">Create Game</button>
+          <button class="ghost" type="button" data-lobby-view="join">Join Game</button>
+          <button class="ghost" type="button" data-lobby-view="instructions">Instructions</button>
+        </nav>
+
+        <div class="lobby-content hidden" id="lobbyContent">
+          <button class="back-button" id="backHomeButton" type="button">← Home</button>
+          <p class="error hidden" id="lobbyError" role="alert"></p>
+          <form class="panel hidden" id="createForm" aria-labelledby="createTitle">
             <div class="panel-head">
-              <h2>Create Game</h2>
+              <h2 id="createTitle" tabindex="-1">Create Game</h2>
               <span class="badge">Host</span>
             </div>
             <label>
@@ -65,9 +73,9 @@
             <button type="submit">Create room</button>
           </form>
 
-          <form class="panel" id="joinForm">
+          <form class="panel hidden" id="joinForm" aria-labelledby="joinTitle">
             <div class="panel-head">
-              <h2>Join Game</h2>
+              <h2 id="joinTitle" tabindex="-1">Join Game</h2>
               <span class="badge badge-blue">Guest</span>
             </div>
             <label>
@@ -84,6 +92,30 @@
             </label>
             <button type="submit">Join room</button>
           </form>
+          <section class="panel instructions hidden" id="instructionsView" aria-labelledby="instructionsTitle">
+            <h2 id="instructionsTitle" tabindex="-1">How to play</h2>
+            <p>Play with a partner. Create a room and share its code, or join with a code they send you.</p>
+            <div>
+              <h3>Keep the chain going</h3>
+              <p>Make a compound word or familiar phrase from the previous link. After <b>side line</b>, play <b>dance</b> to make <b>line dance</b>.</p>
+            </div>
+            <div>
+              <h3>Choose your points</h3>
+              <p>Use the ending word for <b>2 points</b>, or the starting word for <b>1 point</b>. Each compound can be used once per round.</p>
+            </div>
+            <div>
+              <h3>Beat the clock</h3>
+              <p>Reach the target score to win. If your turn timer runs out, your opponent wins the round.</p>
+            </div>
+            <div>
+              <h3>Stuck on a word?</h3>
+              <p>Spend <b>6 points</b> to pick a fresh starting word, or choose <b>Win a new word</b>. You get one 60-second minigame attempt per turn while your normal timer pauses. Win to choose a new word for free. Lose and your original turn resumes. Choosing a new word passes the turn.</p>
+            </div>
+            <div>
+              <h3>Review a link</h3>
+              <p>An unfamiliar link goes to your opponent for review. Accept it to keep playing, or challenge it when challenges are enabled. A challenge decides the round, so use it carefully.</p>
+            </div>
+          </section>
         </div>
       </section>
 

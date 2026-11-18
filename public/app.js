@@ -28,11 +28,43 @@ const minigamePanel = document.querySelector("#minigamePanel");
 const minigameForm = document.querySelector("#minigameForm");
 let minigameOpen = false;
 let minigameSubmitting = false;
+const homeView = document.querySelector("#homeView");
+const lobbyContent = document.querySelector("#lobbyContent");
+const instructionsView = document.querySelector("#instructionsView");
+const lobbyError = document.querySelector("#lobbyError");
+
+function showLobbyView(view) {
+  const isHome = view === "home";
+  homeView.classList.toggle("hidden", !isHome);
+  lobbyContent.classList.toggle("hidden", isHome);
+  createForm.classList.toggle("hidden", view !== "create");
+  joinForm.classList.toggle("hidden", view !== "join");
+  instructionsView.classList.toggle("hidden", view !== "instructions");
+  document.querySelector(".sample-chain").classList.toggle("hidden", !isHome);
+  lobbyError.textContent = "";
+  lobbyError.classList.add("hidden");
+  if (view === "create" || view === "join") {
+    const savedAvatar = localStorage.getItem("wordlink.avatar");
+    const avatar = WORDLINK_AVATARS.find(option => option.id === savedAvatar) || WORDLINK_AVATARS[0];
+    const form = view === "create" ? createForm : joinForm;
+    form.elements.avatar.value = avatar.id;
+  }
+  if (isHome) {
+    homeView.querySelector("button").focus();
+  } else {
+    lobbyContent.querySelector(".panel:not(.hidden) h2").focus();
+  }
+}
+
+document.querySelectorAll("[data-lobby-view]").forEach(button => {
+  button.addEventListener("click", () => showLobbyView(button.dataset.lobbyView));
+});
+document.querySelector("#backHomeButton").addEventListener("click", () => showLobbyView("home"));
 
 function avatarMarkup(avatar) {
-  return avatar.image
-    ? `<img src="${avatar.image}" alt="" draggable="false">`
-    : avatar.emoji;
+  const { width, x, y, size } = avatar.portrait;
+  const framing = `--portrait-width:${width / size * 100}%;--portrait-left:${-x / size * 100}%;--portrait-top:${-y / size * 100}%`;
+  return `<img class="avatar-portrait" src="${avatar.image}" alt="" style="${framing}" draggable="false">`;
 }
 
 document.querySelectorAll("[data-avatar-picker]").forEach(picker => {
@@ -168,20 +200,34 @@ createForm.addEventListener("submit", async (event) => {
     targetScore: Number(form.get("targetScore")),
     challenges: form.get("challenges") === "on"
   };
-  const room = await api("/api/rooms", payload);
-  enterRoom(room);
+  const button = createForm.querySelector("button[type=submit]");
+  button.disabled = true;
+  try {
+    enterRoom(await api("/api/rooms", payload));
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    button.disabled = false;
+  }
 });
 
 joinForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   clearError();
   const form = new FormData(joinForm);
-  const room = await api("/api/join", {
-    name: form.get("name"),
-    avatar: form.get("avatar"),
-    code: form.get("code")
-  });
-  enterRoom(room);
+  const button = joinForm.querySelector("button[type=submit]");
+  button.disabled = true;
+  try {
+    enterRoom(await api("/api/join", {
+      name: form.get("name"),
+      avatar: form.get("avatar"),
+      code: form.get("code")
+    }));
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    button.disabled = false;
+  }
 });
 
 playForm.addEventListener("submit", async (event) => {
@@ -239,9 +285,11 @@ rematchButton.addEventListener("click", async () => {
 
 leaveButton.addEventListener("click", () => {
   if (state.eventSource) state.eventSource.close();
+  if (state.tickTimer) clearTimeout(state.tickTimer);
   state.room = null;
   gameView.classList.add("hidden");
   lobbyView.classList.remove("hidden");
+  showLobbyView("home");
 });
 
 copyCodeButton.addEventListener("click", async () => {
@@ -525,11 +573,15 @@ async function api(url, payload) {
 }
 
 function showError(message) {
-  errorText.textContent = message;
+  const target = gameView.classList.contains("hidden") ? lobbyError : errorText;
+  target.textContent = message;
+  target.classList.remove("hidden");
 }
 
 function clearError() {
   errorText.textContent = "";
+  lobbyError.textContent = "";
+  lobbyError.classList.add("hidden");
 }
 
 function escapeHtml(value) {

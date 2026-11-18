@@ -1,18 +1,50 @@
-const WORDLINK_AVATARS = [
-  ...Array.from({ length: 36 }, (_, index) => {
-    const number = String(index + 1).padStart(2, "0");
-    return {
-      id: `avatar_${number}`,
-      image: `/avatars/avatar_${number}.png`,
-      name: `Avatar ${index + 1}`
-    };
-  }),
-  { id: "fox", emoji: "🦊", name: "Fox" },
-  { id: "frog", emoji: "🐸", name: "Frog" },
-  { id: "panda", emoji: "🐼", name: "Panda" },
-  { id: "cat", emoji: "🐱", name: "Cat" },
-  { id: "unicorn", emoji: "🦄", name: "Unicorn" },
-  { id: "octopus", emoji: "🐙", name: "Octopus" }
+const WORDLINK_AVATAR_FRAMES = [
+  [152, 10, 0, 132],
+  [179, 26, 4, 113],
+  [190, 33, 0, 124],
+  [172, 26, 5, 120],
+  [170, 22, 0, 122],
+  [203, 41, 12, 124],
+  [173, 34, 0, 116],
+  [130, 16, 18, 92],
+  [184, 29, 5, 114],
+  [190, 35, 6, 112],
+  [177, 25, 13, 120],
+  [171, 32, 9, 111],
+  [180, 28, 13, 113],
+  [167, 18, 1, 128],
+  [189, 41, 24, 107],
+  [156, 24, 6, 110],
+  [172, 38, 21, 104],
+  [177, 36, 4, 110],
+  [180, 27, 10, 108],
+  [198, 32, 5, 109],
+  [181, 26, 9, 113],
+  [173, 33, 9, 105],
+  [182, 36, 7, 111],
+  [192, 32, 5, 116],
+  [213, 22, 0, 168],
+  [238, 22, 0, 178],
+  [243, 35, 12, 176],
+  [257, 50, 28, 160],
+  [212, 26, 17, 155],
+  [217, 24, 20, 168],
+  [202, 23, 23, 155],
+  [219, 29, 14, 157],
+  [229, 35, 44, 151],
+  [236, 28, 23, 163],
+  [247, 38, 25, 157],
+  [228, 30, 23, 161],
 ];
+
+const WORDLINK_AVATARS = WORDLINK_AVATAR_FRAMES.map(([width, x, y, size], index) => {
+  const number = String(index + 1).padStart(2, "0");
+  return {
+    id: `avatar_${number}`,
+    image: `/avatars/avatar_${number}.png`,
+    name: `Avatar ${index + 1}`,
+    portrait: { width, x, y, size }
+  };
+});
 
 if (typeof module !== "undefined") module.exports = WORDLINK_AVATARS;

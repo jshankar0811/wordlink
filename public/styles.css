@@ -139,6 +139,8 @@ h2 {
 }
 
 .lobby {
+  width: min(100%, 560px);
+  margin: 0 auto;
   min-height: calc(100vh - 56px);
   display: flex;
   flex-direction: column;
@@ -149,6 +151,60 @@ h2 {
 .lobby-hero {
   display: grid;
   gap: 22px;
+}
+
+.lobby-hero .brand,
+.lobby-hero .sample-chain {
+  justify-content: center;
+}
+
+.lobby-hero h1 {
+  font-size: clamp(44px, 10vw, 72px);
+}
+
+.home-actions {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 360px);
+  margin: 0 auto;
+}
+
+.home-actions button {
+  min-height: 58px;
+  font-size: 18px;
+}
+
+.lobby-content {
+  display: grid;
+  gap: 14px;
+}
+
+.back-button {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.back-button:hover {
+  color: var(--ink);
+  background: transparent;
+}
+
+.instructions {
+  gap: 22px;
+}
+
+.instructions h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.instructions p {
+  color: var(--muted);
+  line-height: 1.65;
+  font-size: 14px;
 }
 
 .sample-chain {
@@ -190,14 +246,9 @@ h2 {
   background: var(--line);
 }
 
-.lobby-grid,
 .play-grid {
   display: grid;
   gap: 18px;
-}
-
-.lobby-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .panel,
@@ -563,7 +614,6 @@ h2 {
     justify-content: flex-start;
   }
 
-  .lobby-grid,
   .play-grid,
   .turn-board {
     grid-template-columns: 1fr;
@@ -612,9 +662,9 @@ h2 {
 .avatar-options {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
-  grid-auto-rows: 88px;
+  grid-auto-rows: auto;
   gap: 8px;
-  max-height: 192px;
+  max-height: 252px;
   overflow-y: auto;
   padding: 4px;
   scrollbar-width: thin;
@@ -642,10 +692,10 @@ h2 {
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 88px;
-  padding: 6px;
+  aspect-ratio: 1;
+  padding: 0;
   border: 2px solid var(--line);
-  border-radius: 16px;
+  border-radius: 12px;
   background: #fff;
   font-size: 28px;
   overflow: hidden;
@@ -676,8 +726,8 @@ h2 {
   align-items: center;
   justify-content: center;
   flex: 0 0 44px;
-  height: 56px;
-  padding: 4px;
+  height: 44px;
+  padding: 0;
   border-radius: 14px;
   background: #f1efe7;
   font-size: 28px;
@@ -694,6 +744,17 @@ h2 {
   min-width: 0;
   min-height: 0;
   object-fit: contain;
+}
+
+.avatar-option .avatar-portrait,
+.player-avatar .avatar-portrait {
+  inset: auto;
+  width: var(--portrait-width);
+  height: auto;
+  min-height: 0;
+  max-width: none;
+  left: var(--portrait-left);
+  top: var(--portrait-top);
 }
 
 .minigame-panel {
