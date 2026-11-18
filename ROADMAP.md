@@ -79,6 +79,7 @@ Completion means restarting the application preserves a round and its remaining 
 - [ ] Log actionable server and connection failures while keeping private session credentials out of logs.
 - [ ] Add a repeatable regression command and GitHub checks for the game rules and browser transitions.
 - [ ] Document deployment verification and a rollback procedure after persistence is in place.
+- [ ] Review the config-as-code deprecation notice shown in Railway and confirm the required migration and deadline for this service.
 
 ## Full test pass still to complete
 
@@ -133,11 +134,11 @@ These are ideas to evaluate after the reliability work, with scope to be chosen 
 
 ## Domain decision
 
-The existing Railway address is sufficient for now. A shorter Railway subdomain or a purchased custom domain can be revisited later. No domain purchase or domain change is pending for this checkpoint.
+The Railway service now uses https://wordlink.up.railway.app. Keep this address in the handoff and deployment checks. A purchased custom domain can be revisited later.
 
 ## Resume notes
 
-- Live app — https://wordlink-production-e69b.up.railway.app
+- Live app — https://wordlink.up.railway.app
 - Repository — https://github.com/jshankar0811/wordlink
 - Local folder — `/Users/jsonexe/Projects/Personal Projects/wordlink`
 - Start locally with `npm start`, then open `http://localhost:3000`.
